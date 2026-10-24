@@ -7,3 +7,4 @@ contracts/cache/
 .env*.local
 .env
 dist/
+contracts/cache
