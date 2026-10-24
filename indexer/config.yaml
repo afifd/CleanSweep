@@ -12,7 +12,7 @@ networks:
     contracts:
       - name: BountyVault
         address:
-          - "0x9A65D8F0B8674d827f2B71a2be10c14948a47Be9"
+          - "0x9a65D8F0B8674d827F2B71a2be10C14948a47Be9"
         handler: src/EventHandlers.ts
         events:
           - event: BountyCreated(uint256 indexed bountyId, bytes32 indexed reportId, address indexed creator, address token, uint256 initialAmount, uint64 deadline)

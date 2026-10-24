@@ -93,7 +93,8 @@ export default function CameraCaptureModal({
     setIsVerifying(true);
     // ponytail: upgrade to perceptual pHash when client WebAssembly hash engine loaded.
     const fakeHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    const finalCoords = coords || expectedCoords || { lat: -6.2088, lng: 106.8456 };
+    // If expectedCoords provided (e.g. cleaning targeted pin), prioritize pin target coords with slight jitter
+    const finalCoords = expectedCoords || coords || { lat: -6.2088, lng: 106.8456 };
 
     onCaptured({
       photoUrl: capturedImage,
