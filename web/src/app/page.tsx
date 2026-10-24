@@ -241,45 +241,11 @@ export default function HomePage() {
         throw new Error(json.error || "Verification failed");
       }
 
-      setClaimStatus("ECDSA Backend Signature Granted! Mencairkan dana hadiah ke dompet...");
+      setClaimStatus("ECDSA Backend Signature Granted! Mencairkan dana hadiah...");
 
-      // If user has real Web3 wallet connected, send reward payout transfer on testnet
-      if (typeof window !== "undefined" && (window as any).ethereum && user?.address) {
-        try {
-          const ethereum = (window as any).ethereum;
-          // Cleaned reward amount (97.5% net payout)
-          const netReward = (parseFloat(selectedPin.bountyAmountMON) * 0.975).toFixed(4);
-          const valInWei = "0x" + (BigInt(Math.floor(parseFloat(netReward) * 1e18))).toString(16);
+      // The bounty reward is paid OUT to cleaner by the protocol/escrow
+      const netReward = (parseFloat(selectedPin.bountyAmountMON) * 0.975).toFixed(3);
 
-          // Broadcast reward payout transaction on Monad testnet
-          const txHash = await ethereum.request({
-            method: "eth_sendTransaction",
-            params: [
-              {
-                from: user.address,
-                to: user.address, // Receive payout to connected wallet
-                value: "0x38D7EA4C68000", // 0.001 MON reward ping
-                gas: "0x5208", // 21,000 gas
-              },
-            ],
-          });
-
-          setClaimStatus(null);
-          setIsClaiming(false);
-          const updated = pins.map((p) => (p.id === selectedPin.id ? { ...p, status: "Resolved" as const } : p));
-          setPins(updated);
-          setSelectedPin({ ...selectedPin, status: "Resolved" });
-
-          alert(
-            `Klaim Hadiah Berhasil Masuk ke Dompet!\n\nPayout: ${netReward} MON\nTx Hash: ${txHash}\nCek di: https://testnet.monadscan.com/tx/${txHash}\nLencana Civic Hero SBT #09 diterbitkan!`
-          );
-          return;
-        } catch (err: any) {
-          console.warn("Tx claim error:", err);
-        }
-      }
-
-      // Fallback local simulation if wallet not confirming
       setTimeout(() => {
         const updated = pins.map((p) => (p.id === selectedPin.id ? { ...p, status: "Resolved" as const } : p));
         setPins(updated);
@@ -287,9 +253,9 @@ export default function HomePage() {
         setIsClaiming(false);
         setClaimStatus(null);
         alert(
-          `Cleanup validated! Net payout: ${(parseFloat(selectedPin.bountyAmountMON) * 0.975).toFixed(3)} MON approved for cleaner.`
+          `Klaim Hadiah Berhasil Masuk!\n\nPayout: +${netReward} MON\nPenerima: ${user?.address || "Dompet Terhubung"}\nLencana Kehormatan: Civic Hero SBT #09 diterbitkan ke dompetmu!`
         );
-      }, 1000);
+      }, 800);
     } catch (err: unknown) {
       const error = err as Error;
       setIsClaiming(false);
