@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { Sparkles, MapPin, Coins, ShieldCheck, Flame, Layers } from 'lucide-react';
+import { Sparkles, MapPin, Coins, ShieldCheck, Flame } from 'lucide-react';
 import { FUNDERS, DEMO_COORDS } from '@/lib/actors';
 
 const MapExplorer = dynamic(() => import('@/components/MapExplorer'), {
@@ -94,6 +94,21 @@ export default function PublicFeedPage() {
     0
   );
 
+  const handleSelectTicket = (ticket: BountyTicket) => {
+    setSelectedTicket(ticket);
+    const cardEl = document.getElementById(`ticket-card-${ticket.id}`);
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
+  const handleSelectFromMarker = (markerId: string) => {
+    const found = BOUNTY_TICKETS.find((t) => t.id === markerId);
+    if (found) {
+      handleSelectTicket(found);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Top Navbar */}
@@ -144,7 +159,7 @@ export default function PublicFeedPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold tracking-tight">Live Bounty Feed</h2>
-              <p className="text-xs text-muted-foreground">Select a report to focus on map or take action</p>
+              <p className="text-xs text-muted-foreground">Click a ticket or map pin to inspect and focus</p>
             </div>
             <Badge variant="secondary" className="font-mono text-xs">
               {BOUNTY_TICKETS.length} Reports
@@ -158,11 +173,12 @@ export default function PublicFeedPage() {
               return (
                 <div
                   key={ticket.id}
-                  onClick={() => setSelectedTicket(ticket)}
+                  id={`ticket-card-${ticket.id}`}
+                  onClick={() => handleSelectTicket(ticket)}
                   className={`cursor-pointer rounded-lg border transition-all p-3.5 space-y-3 ${
                     isSelected
                       ? 'border-primary ring-1 ring-primary bg-primary/2 shadow-sm'
-                      : 'hover:border-foreground/30 bg-card'
+                      : 'hover:border-foreground/30 bg-card hover:shadow-xs'
                   }`}
                 >
                   <div className="flex gap-3">
@@ -202,26 +218,28 @@ export default function PublicFeedPage() {
                     </div>
                   </div>
 
-                  {/* Persona quick links */}
+                  {/* Persona quick links with prominent, eye-catching buttons */}
                   <div className="pt-2 border-t flex items-center justify-between gap-2">
                     <span className="text-[11px] text-muted-foreground truncate">
                       By {ticket.funderName}
                     </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {ticket.boosterHref && (
                         <Link
                           href={ticket.boosterHref}
-                          className={buttonVariants({ variant: 'outline', size: 'sm', className: 'h-7 text-[11px] px-2.5' })}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center justify-center rounded-md bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold px-3 py-1.5 shadow-sm transition-all"
                         >
-                          <Flame className="size-3 mr-1 text-amber-500" /> Boost
+                          <Flame className="size-3.5 mr-1 fill-white" /> Boost
                         </Link>
                       )}
                       {ticket.cleanerHref && (
                         <Link
                           href={ticket.cleanerHref}
-                          className={buttonVariants({ variant: 'secondary', size: 'sm', className: 'h-7 text-[11px] px-2.5' })}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center justify-center rounded-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold px-3 py-1.5 shadow-sm transition-all"
                         >
-                          <ShieldCheck className="size-3 mr-1 text-emerald-600" /> Clean
+                          <ShieldCheck className="size-3.5 mr-1" /> Clean
                         </Link>
                       )}
                     </div>
@@ -229,17 +247,6 @@ export default function PublicFeedPage() {
                 </div>
               );
             })}
-          </div>
-
-          {/* Architecture Monad Hackathon Highlights */}
-          <div className="rounded-lg border bg-muted/40 p-4 text-xs space-y-2 mt-4">
-            <div className="flex items-center gap-1.5 font-bold">
-              <Layers className="size-4 text-primary" />
-              <span>Why Monad for Civic Micro-Bounties?</span>
-            </div>
-            <p className="text-muted-foreground">
-              Sub-second block finality enables instant lock & claim settlement with zero gas anxiety for everyday citizens, merchant associations, and cleaners.
-            </p>
           </div>
         </section>
 
@@ -251,6 +258,8 @@ export default function PublicFeedPage() {
             bountyAmount={selectedTicket.bounty}
             title={`${selectedTicket.ticketNo} - ${selectedTicket.location}`}
             markers={mapMarkers}
+            selectedId={selectedTicket.id}
+            onSelectMarker={handleSelectFromMarker}
             zoom={15}
           />
         </section>
