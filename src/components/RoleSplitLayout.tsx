@@ -61,7 +61,7 @@ export default function RoleSplitLayout({
       </div>
 
       {/* Right/Top: Map Viewport */}
-      <div className="relative h-[350px] lg:h-full w-full bg-muted order-1 lg:order-2 border-b lg:border-b-0 lg:border-l">
+      <div className="relative h-87.5 lg:h-full w-full bg-muted order-1 lg:order-2 border-b lg:border-b-0 lg:border-l">
         <MapExplorer coords={coords} status={status} bountyAmount={bountyAmount} title={title} />
       </div>
     </div>
