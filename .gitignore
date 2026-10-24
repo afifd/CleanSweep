@@ -8,3 +8,4 @@ contracts/cache/
 .env
 dist/
 contracts/cache
+web\node_modules
