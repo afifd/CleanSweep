@@ -1,144 +1,47 @@
-import { NextResponse } from 'next/server';
-import { createWalletClient, http, parseEther, defineChain } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { formatEther, parseEventLogs } from 'viem';
+import { ABI, ApiError, accountFor, balanceOf, claimHashFor, handle, invalidateCache, parseAddress, resolveBounty, safe, sendContractTx, walletFor } from '@/lib/chain';
 
-export const monadTestnet = defineChain({
-  id: 10143,
-  name: 'Monad Testnet',
-  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://testnet-rpc.monad.xyz'] },
-  },
-});
+export const maxDuration = 30;
 
-const ZERO_ADDRESS: `0x${string}` = '0x0000000000000000000000000000000000000000';
-
-function formatPrivateKey(pk?: string): `0x${string}` | null {
-  if (!pk) return null;
-  const trimmed = pk.trim();
-  return (trimmed.startsWith('0x') ? trimmed : `0x${trimmed}`) as `0x${string}`;
-}
-
-const generateMockTxHash = (): string => {
-  const chars = '0123456789abcdef';
-  let h = '0x';
-  for (let i = 0; i < 64; i++) h += chars[Math.floor(Math.random() * chars.length)];
-  return h;
-};
-
+// Cleaner claim. Verification (GPS/photo) is mocked: the backend verifier always signs for an ACTIVE bounty.
+// The cleaner's own wallet sends claimBounty, so the payout lands in the cleaner's wallet.
 export async function POST(req: Request) {
-  try {
+  return handle(async () => {
     const body = await req.json().catch(() => ({}));
+    const cleanerWallet = walletFor('cleaner');
+    const cleanerAddress = body.cleanerAddress ? parseAddress(body.cleanerAddress) : cleanerWallet.account.address;
 
-    const MONAD_RPC = process.env.NEXT_PUBLIC_MONAD_RPC || 'https://testnet-rpc.monad.xyz';
+    // Same tick => viem batches these into a single HTTP request.
+    const [{ id: bountyId, bounty }, balanceBefore] = await Promise.all([
+      resolveBounty(body.bountyId),
+      safe(() => balanceOf(cleanerAddress)),
+    ]);
+    if (bounty.status !== 0) throw new ApiError(409, `Bounty #${bountyId} is not active (already claimed or refunded)`);
 
-    // Auto-retry configuration to avoid public RPC rate limits
-    const transport = http(MONAD_RPC, {
-      retryCount: 3,
-      retryDelay: 1500,
+    const sigExpiry = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const claimHash = claimHashFor(bountyId, bounty.reportId, cleanerAddress, sigExpiry);
+    const signature = await accountFor('verifier').signMessage({ message: { raw: claimHash } });
+
+    const { hash: txHash, receipt } = await sendContractTx('cleaner', {
+      functionName: 'claimBounty',
+      args: [bountyId, cleanerAddress, sigExpiry, signature],
+      // Monad bills the gas LIMIT, and eth_estimateGas over-shoots this call (~1.4M, ~0.15 MON).
+      // A claim incl. first-time SBT mint measures ~330k in tests, so 500k leaves headroom at ~1/3 the cost.
+      gas: 500_000n,
     });
+    invalidateCache();
 
-    const funderPk = formatPrivateKey(
-      process.env.FUNDER_1_PK || process.env.NEXT_PUBLIC_FUNDER_1_PK
-    );
-    const boosterPk = formatPrivateKey(
-      process.env.BOOSTER_1_PK || process.env.NEXT_PUBLIC_BOOSTER_1_PK
-    );
-    const cleanerPk = formatPrivateKey(
-      process.env.CLEANER_1_PK || process.env.NEXT_PUBLIC_CLEANER_1_PK
-    );
-
-    // Resolve target cleaner address: prioritize server-derived address from cleanerPk
-    let targetCleanerAddress: `0x${string}` = ZERO_ADDRESS;
-
-    if (cleanerPk) {
-      try {
-        targetCleanerAddress = privateKeyToAccount(cleanerPk).address;
-      } catch {
-        targetCleanerAddress = ZERO_ADDRESS;
-      }
-    }
-
-    if (targetCleanerAddress === ZERO_ADDRESS) {
-      targetCleanerAddress =
-        (process.env.NEXT_PUBLIC_CLEANER_1_ADDRESS as `0x${string}`) ||
-        body.cleanerAddress ||
-        ZERO_ADDRESS;
-    }
-
-    let funderTxHash = '';
-    let boosterTxHash = '';
-
-    // Only attempt real on-chain transfer if keys exist and recipient is valid
-    const isLiveTransfer =
-      targetCleanerAddress !== ZERO_ADDRESS &&
-      Boolean(funderPk) &&
-      Boolean(boosterPk);
-
-    // 1. Funder sends promised payout directly to Cleaner
-    if (isLiveTransfer && funderPk) {
-      try {
-        const funderAccount = privateKeyToAccount(funderPk);
-        const funderClient = createWalletClient({
-          account: funderAccount,
-          chain: monadTestnet,
-          transport,
-        });
-
-        // Send native MON micro-payout on Monad testnet
-        funderTxHash = await funderClient.sendTransaction({
-          to: targetCleanerAddress,
-          value: parseEther('0.02'), // Actual on-chain testnet transfer
-          gas: BigInt(21000),
-        });
-      } catch (err) {
-        console.warn('Funder on-chain payout fallback:', err);
-      }
-    }
-
-    // 2. Pause 1800ms to allow public Monad RPC 1-second burst window to fully reset
-    if (isLiveTransfer) {
-      await new Promise((r) => setTimeout(r, 1800));
-    }
-
-    // 3. Booster sends promised boost directly to Cleaner
-    if (isLiveTransfer && boosterPk) {
-      try {
-        const boosterAccount = privateKeyToAccount(boosterPk);
-        const boosterClient = createWalletClient({
-          account: boosterAccount,
-          chain: monadTestnet,
-          transport,
-        });
-
-        boosterTxHash = await boosterClient.sendTransaction({
-          to: targetCleanerAddress,
-          value: parseEther('0.01'), // Actual on-chain testnet transfer
-          gas: BigInt(21000),
-        });
-      } catch (err) {
-        console.warn('Booster on-chain payout fallback:', err);
-      }
-    }
-
-    // Fallback to mock hashes only if not live or if RPC completely failed
-    if (!funderTxHash) funderTxHash = generateMockTxHash();
-    if (!boosterTxHash) boosterTxHash = generateMockTxHash();
-
-    return NextResponse.json({
-      success: true,
-      funderTxHash,
-      boosterTxHash,
-      funderAmount: '5.0',
-      boosterAmount: '2.0',
-      totalPayout: '7.0',
-      cleanerAddress: targetCleanerAddress,
-    });
-  } catch (error: unknown) {
-    const err = error as Error;
-    return NextResponse.json(
-      { error: err.message || 'Settlement failed' },
-      { status: 500 }
-    );
-  }
+    const log = parseEventLogs({ abi: ABI, eventName: 'BountyClaimed', logs: receipt.logs })[0];
+    return {
+      txHash,
+      bountyId: bountyId.toString(),
+      cleanerAddress,
+      totalPool: formatEther(bounty.totalPool),
+      netPayout: log ? formatEther(log.args.netPayout) : null,
+      fee: log ? formatEther(log.args.feePaid) : null,
+      sbtMinted: log ? log.args.sbtMinted : false,
+      balanceBefore,
+      balanceAfter: await safe(() => balanceOf(cleanerAddress)),
+    };
+  });
 }

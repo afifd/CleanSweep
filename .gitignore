@@ -20,6 +20,11 @@
 # production
 /build
 
+# foundry / contracts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
 # misc
 .DS_Store
 *.pem
@@ -38,4 +43,3 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts

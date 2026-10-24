@@ -3,8 +3,11 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import RoleSplitLayout from '@/components/RoleSplitLayout';
-import { CLEANERS, DEMO_COORDS, DEMO_REPORT_ID } from '@/lib/actors';
-import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/lib/web3';
+import { CLEANERS, DEMO_COORDS } from '@/lib/actors';
+import { getAccountFromPrivateKey, formatAddress } from '@/lib/web3';
+import { useSearchParams } from 'next/navigation';
+import { useBounty } from '@/lib/use-bounty';
+import { fmt } from '@/lib/format';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +23,7 @@ import {
   Wand2,
   Image as ImageIcon,
   Loader2,
+  Award,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -33,10 +37,15 @@ export default function CleanerView({ params }: CleanerViewProps) {
 
   // Form states - initially unfilled, populated on "Fill"
   const [isFilled, setIsFilled] = useState(false);
-  const [status, setStatus] = useState<'ACTIVE' | 'RESOLVED'>('ACTIVE');
+  const searchParams = useSearchParams();
+  const { bounty, loading, error: loadError, refresh } = useBounty(searchParams.get('bounty'));
+  const [claimed, setClaimed] = useState(false);
+  const [claimResult, setClaimResult] = useState<{ netPayout: string; fee: string; before: string | null; after: string | null } | null>(null);
+  const status: 'ACTIVE' | 'RESOLVED' = claimed || bounty?.status === 'CLAIMED' ? 'RESOLVED' : 'ACTIVE';
+  const canClaim = bounty?.status === 'ACTIVE';
   const [isLoading, setIsLoading] = useState(false);
-  const [funderTxHash, setFunderTxHash] = useState<string>('');
-  const [boosterTxHash, setBoosterTxHash] = useState<string>('');
+  const [txHash, setTxHash] = useState<string>('');
+  const [sbtMinted, setSbtMinted] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const account = getAccountFromPrivateKey(cleaner.privateKey);
@@ -46,9 +55,9 @@ export default function CleanerView({ params }: CleanerViewProps) {
       : account.address
   );
 
-  const funderAmount = 5.0;
-  const boosterAmount = 2.0;
-  const totalBounty = funderAmount + boosterAmount; // 7.0 MON mock pool
+  const funderAmount = Number(bounty?.creatorAmount ?? 0);
+  const boosterAmount = Number(bounty?.boostAmount ?? 0);
+  const totalBounty = Number(bounty?.totalPool ?? 0);
 
   const handleAutoFill = () => {
     setIsFilled(true);
@@ -56,7 +65,7 @@ export default function CleanerView({ params }: CleanerViewProps) {
   };
 
   const handleClaimBounty = async () => {
-    if (!isFilled || isLoading) return;
+    if (!isFilled || isLoading || !bounty) return;
     setIsLoading(true);
     setErrorMessage('');
 
@@ -64,28 +73,20 @@ export default function CleanerView({ params }: CleanerViewProps) {
       const res = await fetch('/api/settle-bounty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cleanerAddress }),
+        body: JSON.stringify({ cleanerAddress, bountyId: bounty.id }),
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        setFunderTxHash(data.funderTxHash);
-        setBoosterTxHash(data.boosterTxHash);
-        if (data.cleanerAddress && data.cleanerAddress !== '0x0000000000000000000000000000000000000000') {
-          setCleanerAddress(data.cleanerAddress);
-        }
-        setStatus('RESOLVED');
-      } else {
-        throw new Error(data.error || 'Settlement failed');
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Settlement failed');
+      setTxHash(data.txHash);
+      setSbtMinted(Boolean(data.sbtMinted));
+      setClaimResult({ netPayout: data.netPayout, fee: data.fee, before: data.balanceBefore, after: data.balanceAfter });
+      if (data.cleanerAddress) setCleanerAddress(data.cleanerAddress);
+      setClaimed(true);
+      void refresh();
     } catch (err: unknown) {
       console.error('Failed to claim bounty on-chain:', err);
-      // Fallback gracefully so demo flow never freezes
-      const fallbackFunder = generateMockTxHash();
-      const fallbackBooster = generateMockTxHash();
-      setFunderTxHash(fallbackFunder);
-      setBoosterTxHash(fallbackBooster);
-      setStatus('RESOLVED');
+      setErrorMessage((err as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +96,7 @@ export default function CleanerView({ params }: CleanerViewProps) {
     <RoleSplitLayout
       coords={DEMO_COORDS}
       status={status}
-      bountyAmount={totalBounty.toFixed(1)}
+      bountyAmount={fmt(totalBounty)}
       roleBadge="Cleaner Persona"
       title="Spanduk Liar - Cleaned & Claimed"
     >
@@ -124,7 +125,7 @@ export default function CleanerView({ params }: CleanerViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Submit Proof & Claim Escrow</CardTitle>
-                <p className="text-xs font-mono text-muted-foreground">Ticket #Malioboro-01 ({DEMO_REPORT_ID.slice(0, 10)}...)</p>
+                <p className="text-xs font-mono text-muted-foreground">{loading ? 'Loading bounty…' : bounty ? `Bounty #${bounty.id} (${bounty.status})` : 'No bounty found'}</p>
               </div>
               <Badge
                 variant={status === 'RESOLVED' ? 'default' : isFilled ? 'secondary' : 'outline'}
@@ -199,15 +200,15 @@ export default function CleanerView({ params }: CleanerViewProps) {
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Escrow Pool</p>
-                  <p className="font-mono font-medium">{totalBounty.toFixed(1)} MON</p>
+                  <p className="font-mono font-medium">{fmt(totalBounty)} MON</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Funder Pledge</p>
-                  <p className="font-mono text-muted-foreground">{funderAmount.toFixed(1)} MON</p>
+                  <p className="font-mono text-muted-foreground">{fmt(funderAmount)} MON</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Booster Pledge</p>
-                  <p className="font-mono text-amber-600 font-medium">+{boosterAmount.toFixed(1)} MON</p>
+                  <p className="font-mono text-amber-600 font-medium">+{fmt(boosterAmount)} MON</p>
                 </div>
               </div>
             </div>
@@ -217,24 +218,24 @@ export default function CleanerView({ params }: CleanerViewProps) {
               <div className="p-3.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-3">
                 <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 text-sm">
                   <Sparkles className="size-4 text-emerald-600" />
-                  <span>Settlement Complete! {totalBounty.toFixed(1)} MON Settled</span>
+                  <span>Settlement Complete! {fmt(claimResult?.netPayout ?? totalBounty)} MON Received</span>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  Both Funder and Booster promises have been paid directly into cleaner address{' '}
-                  <span className="font-mono font-medium text-foreground">{formatAddress(cleanerAddress)}</span> on Monad Testnet.
+                  The BountyVault smart contract released the escrow ({fmt(totalBounty)} MON pool, {fmt(claimResult?.fee ?? 0)} MON platform fee) directly to cleaner address{' '}
+                  <span className="font-mono font-medium text-foreground">{formatAddress(cleanerAddress)}</span> on Monad Testnet.{claimResult && claimResult.before && claimResult.after && <> Balance: {fmt(claimResult.before)} → {fmt(claimResult.after)} MON (after gas).</>}
                 </p>
 
                 <div className="space-y-2">
-                  {funderTxHash && (
+                  {txHash && (
                     <div className="flex items-center justify-between font-mono text-[11px] bg-background/90 p-2 rounded-md border">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="outline" className="text-[10px] font-sans bg-blue-500/10 text-blue-700 border-blue-200 shrink-0">
-                          Funder ({funderAmount.toFixed(1)} MON)
+                        <Badge variant="outline" className="text-[10px] font-sans bg-emerald-500/10 text-emerald-700 border-emerald-200 shrink-0">
+                          BountyVault Claim Tx
                         </Badge>
-                        <span className="truncate max-w-40 sm:max-w-55 text-muted-foreground">{funderTxHash}</span>
+                        <span className="truncate max-w-40 sm:max-w-55 text-muted-foreground">{txHash}</span>
                       </div>
                       <a
-                        href={`https://testnet.monadscan.com/tx/${funderTxHash}`}
+                        href={`https://testnet.monadscan.com/tx/${txHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary flex items-center gap-1 font-sans text-xs hover:underline ml-2 shrink-0 font-medium"
@@ -244,21 +245,21 @@ export default function CleanerView({ params }: CleanerViewProps) {
                     </div>
                   )}
 
-                  {boosterTxHash && (
+                  {sbtMinted && (
                     <div className="flex items-center justify-between font-mono text-[11px] bg-background/90 p-2 rounded-md border">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="outline" className="text-[10px] font-sans bg-amber-500/10 text-amber-700 border-amber-200 shrink-0">
-                          Booster ({boosterAmount.toFixed(1)} MON)
+                        <Badge variant="outline" className="text-[10px] font-sans bg-purple-500/10 text-purple-700 border-purple-200 shrink-0 flex items-center gap-1">
+                          <Award className="size-3" /> Civic Hero SBT
                         </Badge>
-                        <span className="truncate max-w-40 sm:max-w-55 text-muted-foreground">{boosterTxHash}</span>
+                        <span className="font-sans text-xs text-foreground font-medium truncate">Soulbound Badge Minted</span>
                       </div>
                       <a
-                        href={`https://testnet.monadscan.com/tx/${boosterTxHash}`}
+                        href={`https://testnet.monadscan.com/address/0x4A3541e9B7E1C090Ac991825fA46Fe9cbe41eD8f`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary flex items-center gap-1 font-sans text-xs hover:underline ml-2 shrink-0 font-medium"
                       >
-                        Monadscan <ExternalLink className="size-3" />
+                        SBT Explorer <ExternalLink className="size-3" />
                       </a>
                     </div>
                   )}
@@ -266,8 +267,10 @@ export default function CleanerView({ params }: CleanerViewProps) {
               </div>
             )}
 
-            {errorMessage && (
-              <p className="text-xs text-destructive font-medium">{errorMessage}</p>
+            {(errorMessage || loadError || (!loading && !bounty)) && (
+              <p className="text-xs text-destructive font-medium break-words">
+                {errorMessage || loadError || 'No bounty found. Create one as Funder first.'}
+              </p>
             )}
           </CardContent>
 
@@ -307,16 +310,16 @@ export default function CleanerView({ params }: CleanerViewProps) {
                 <Button
                   className="w-full font-semibold"
                   size="lg"
-                  disabled={!isFilled || isLoading}
+                  disabled={!isFilled || isLoading || !canClaim}
                   onClick={handleClaimBounty}
                 >
                   {isLoading ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
-                      Settling Funder & Booster on Monad...
+                      Releasing BountyVault Escrow & Minting SBT...
                     </span>
                   ) : isFilled ? (
-                    `Submit Proof & Claim ${totalBounty.toFixed(1)} MON`
+                    `Submit Proof & Claim ${fmt(totalBounty)} MON`
                   ) : (
                     'Fill Proof to Claim Bounty'
                   )}

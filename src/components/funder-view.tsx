@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import RoleSplitLayout from '@/components/RoleSplitLayout';
 import { FUNDERS } from '@/lib/actors';
-import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/lib/web3';
+import { getAccountFromPrivateKey, formatAddress } from '@/lib/web3';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, CheckCircle2, ShieldAlert, Wallet, ArrowRight, Wand2, Image as ImageIcon } from 'lucide-react';
+import { ExternalLink, CheckCircle2, Wallet, ArrowRight, Wand2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface FunderViewProps {
@@ -35,6 +35,8 @@ export default function FunderView({ params }: FunderViewProps) {
   const [isLocked, setIsLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string>('');
+  const [bountyId, setBountyId] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Auto-fill hardcoded values and display the map pin
   const handleAutoFill = () => {
@@ -46,15 +48,23 @@ export default function FunderView({ params }: FunderViewProps) {
   };
 
   const handleLockBounty = async () => {
-    if (!isFilled) return;
+    if (!isFilled || isLoading) return;
     setIsLoading(true);
+    setErrorMessage('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, 850));
-      const hash = generateMockTxHash();
-      setTxHash(hash);
+      const res = await fetch('/api/escrow/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: bounty || defaultBounty }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Lock failed');
+      setTxHash(data.txHash);
+      setBountyId(data.bountyId);
       setIsLocked(true);
     } catch (err) {
       console.error('Failed to lock bounty:', err);
+      setErrorMessage((err as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -192,12 +202,16 @@ export default function FunderView({ params }: FunderViewProps) {
               )}
             </div>
 
+            {errorMessage && (
+              <p className="text-xs text-destructive font-medium break-words">{errorMessage}</p>
+            )}
+
             {/* Escrow Lock confirmation badge */}
             {isLocked && (
               <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />
-                  <span>Escrow Locked on Monad Testnet ({bounty || defaultBounty} MON)</span>
+                  <span>Escrow Locked in BountyVault on Monad ({bounty || defaultBounty} MON) — Bounty #{bountyId}</span>
                 </div>
                 {txHash && (
                   <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 p-1.5 rounded border">
@@ -208,7 +222,7 @@ export default function FunderView({ params }: FunderViewProps) {
                       rel="noopener noreferrer"
                       className="text-primary flex items-center gap-0.5 hover:underline"
                     >
-                      Explorer <ExternalLink className="size-3" />
+                      Monadscan <ExternalLink className="size-3" />
                     </a>
                   </div>
                 )}
@@ -221,7 +235,7 @@ export default function FunderView({ params }: FunderViewProps) {
               <div className="w-full space-y-2">
                 <Button className="w-full" disabled variant="outline">
                   <CheckCircle2 className="size-4 mr-1 text-emerald-600" />
-                  Bounty Active in Public Feed
+                  Bounty Active in Escrow Vault
                 </Button>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <Link
@@ -231,7 +245,7 @@ export default function FunderView({ params }: FunderViewProps) {
                     View on Feed
                   </Link>
                   <Link
-                    href="/booster/1"
+                    href={`/booster/1?bounty=${bountyId}`}
                     className={buttonVariants({ variant: 'default', size: 'sm', className: 'w-full' })}
                   >
                     Switch to Booster <ArrowRight className="size-3 ml-1" />
@@ -256,11 +270,16 @@ export default function FunderView({ params }: FunderViewProps) {
                   disabled={!isFilled || isLoading}
                   onClick={handleLockBounty}
                 >
-                  {isLoading
-                    ? 'Submitting to Monad...'
-                    : isFilled
-                    ? `Lock ${bounty || defaultBounty} MON Bounty`
-                    : 'Fill Details to Lock Bounty'}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin" />
+                      Locking into BountyVault...
+                    </span>
+                  ) : isFilled ? (
+                    `Lock ${bounty || defaultBounty} MON Bounty`
+                  ) : (
+                    'Fill Details to Lock Bounty'
+                  )}
                 </Button>
               </div>
             )}

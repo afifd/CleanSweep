@@ -3,9 +3,9 @@ export const MONAD_TESTNET_CHAIN_ID = 10143;
 // Canonical / default deployed addresses on Monad testnet
 export const CONTRACT_ADDRESSES = {
   BOUNTY_VAULT: (process.env.NEXT_PUBLIC_BOUNTY_VAULT_ADDRESS ||
-    "0x9a65D8F0B8674d827F2B71a2be10C14948a47Be9") as `0x${string}`,
+    "0xE0c21974e6617B4FC99cD5f237889E0dF0067Da2") as `0x${string}`,
   CIVIC_HERO_SBT: (process.env.NEXT_PUBLIC_CIVIC_HERO_SBT_ADDRESS ||
-    "0x4296c01acf19e36181e99187a5a3ac7733CE3F21") as `0x${string}`,
+    "0x4A3541e9B7E1C090Ac991825fA46Fe9cbe41eD8f") as `0x${string}`,
   USDC: (process.env.NEXT_PUBLIC_USDC_ADDRESS ||
     "0x754704Bc059F8C67012fEd69BC8A327a5aafb603") as `0x${string}`,
 };
@@ -30,6 +30,13 @@ export const BOUNTY_VAULT_ABI = [
     type: "function",
     name: "bountyCount",
     inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "reportToBountyId",
+    inputs: [{ name: "", type: "bytes32" }],
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
   },
@@ -103,6 +110,28 @@ export const BOUNTY_VAULT_ABI = [
     name: "getDonors",
     inputs: [{ name: "bountyId", type: "uint256" }],
     outputs: [{ name: "", type: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "donorContributions",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "computeClaimHash",
+    inputs: [
+      { name: "bountyId", type: "uint256" },
+      { name: "reportId", type: "bytes32" },
+      { name: "cleaner", type: "address" },
+      { name: "sigExpiry", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
     stateMutability: "view",
   },
   {

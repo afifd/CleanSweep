@@ -69,4 +69,4 @@ export const CLEANERS: Record<string, ActorProfile> = {
 };
 
 export const DEMO_COORDS = { lat: -7.7956, lng: 110.3695 };
-export const DEMO_REPORT_ID = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`;
+export const DEMO_REPORT_ID = '0x000000000000000000000000007469636b65742d6d616c696f626f726f2d3031' as `0x${string}`;

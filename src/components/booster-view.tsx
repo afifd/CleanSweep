@@ -4,13 +4,16 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import RoleSplitLayout from '@/components/RoleSplitLayout';
 import { BOOSTERS, DEMO_COORDS } from '@/lib/actors';
-import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/lib/web3';
+import { getAccountFromPrivateKey, formatAddress } from '@/lib/web3';
+import { useSearchParams } from 'next/navigation';
+import { useBounty } from '@/lib/use-bounty';
+import { fmt } from '@/lib/format';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, CheckCircle2, TrendingUp, Wallet, ArrowRight, Wand2 } from 'lucide-react';
+import { ExternalLink, CheckCircle2, TrendingUp, Wallet, ArrowRight, Wand2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface BoosterViewProps {
@@ -22,12 +25,16 @@ export default function BoosterView({ params }: BoosterViewProps) {
   const booster = BOOSTERS[id] || BOOSTERS['1'];
 
   const defaultBoost = booster.defaultAmount || '2.0';
-  const initialEscrow = 5.0;
+  const searchParams = useSearchParams();
+  const { bounty, loading, error: loadError, refresh } = useBounty(searchParams.get('bounty'));
 
   // Form states - input-able boost amount with "Fill" capability
   const [boostInput, setBoostInput] = useState('');
   const [isFilled, setIsFilled] = useState(false);
-  const [currentEscrow, setCurrentEscrow] = useState<number>(initialEscrow);
+  const [boostedPool, setBoostedPool] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const canBoost = bounty?.status === 'ACTIVE';
+  const currentEscrow = boostedPool ?? Number(bounty?.totalPool ?? 0);
   const [hasBoosted, setHasBoosted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string>('');
@@ -45,17 +52,25 @@ export default function BoosterView({ params }: BoosterViewProps) {
 
   const handleBoostBounty = async () => {
     const amountToAdd = parseFloat(boostInput || defaultBoost);
-    if (isNaN(amountToAdd) || amountToAdd <= 0) return;
+    if (isNaN(amountToAdd) || amountToAdd <= 0 || isLoading || !bounty) return;
 
     setIsLoading(true);
+    setErrorMessage('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const hash = generateMockTxHash();
-      setTxHash(hash);
-      setCurrentEscrow((prev) => prev + amountToAdd);
+      const res = await fetch('/api/escrow/boost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: String(amountToAdd), bountyId: bounty.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Boost failed');
+      setTxHash(data.txHash);
+      setBoostedPool(Number(data.newPool));
       setHasBoosted(true);
+      void refresh();
     } catch (err) {
       console.error('Failed to boost bounty:', err);
+      setErrorMessage((err as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +80,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
     <RoleSplitLayout
       coords={DEMO_COORDS}
       status="ACTIVE"
-      bountyAmount={currentEscrow.toFixed(1)}
+      bountyAmount={fmt(currentEscrow)}
       roleBadge="Booster Persona"
       title="Spanduk Liar - #Malioboro-01"
     >
@@ -94,7 +109,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Inspect & Boost Escrow</CardTitle>
-                <p className="text-xs font-mono text-muted-foreground">Ticket #Malioboro-01</p>
+                <p className="text-xs font-mono text-muted-foreground">{loading ? 'Loading bounty…' : bounty ? `Bounty #${bounty.id} (${bounty.status})` : 'No bounty found'}</p>
               </div>
               <Badge
                 variant={hasBoosted ? 'default' : 'secondary'}
@@ -124,7 +139,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
               <div className="flex flex-col justify-center space-y-1 bg-amber-500/5 p-3 rounded-md border border-amber-500/20">
                 <span className="text-[11px] text-muted-foreground">Current Escrow Pool</span>
                 <span className="text-2xl font-black font-mono text-amber-600 tracking-tight">
-                  {currentEscrow.toFixed(1)} MON
+                  {fmt(currentEscrow)} MON
                 </span>
                 <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
                   <TrendingUp className="size-3" /> Community Pledged
@@ -156,16 +171,22 @@ export default function BoosterView({ params }: BoosterViewProps) {
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Boosted funds are locked in Monad contract and released upon cleanup verification.
+                Boosted funds are locked directly in BountyVault contract on Monad Testnet.
               </p>
             </div>
+
+            {(errorMessage || loadError || (!loading && !bounty)) && (
+              <p className="text-xs text-destructive font-medium break-words">
+                {errorMessage || loadError || 'No active bounty. Create one as Funder first.'}
+              </p>
+            )}
 
             {/* Boost confirmation badge */}
             {hasBoosted && (
               <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />
-                  <span>Escrow Boosted by +{boostInput || defaultBoost} MON</span>
+                  <span>Escrow Boosted by +{boostInput || defaultBoost} MON on Monad</span>
                 </div>
                 {txHash && (
                   <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 p-1.5 rounded border">
@@ -176,7 +197,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
                       rel="noopener noreferrer"
                       className="text-primary flex items-center gap-0.5 hover:underline"
                     >
-                      Explorer <ExternalLink className="size-3" />
+                      Monadscan <ExternalLink className="size-3" />
                     </a>
                   </div>
                 )}
@@ -189,7 +210,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
               <div className="w-full space-y-2">
                 <Button className="w-full" disabled variant="outline">
                   <CheckCircle2 className="size-4 mr-1 text-emerald-600" />
-                  Boost Added to Bounty
+                  Boost Added to Escrow Vault
                 </Button>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <Link
@@ -199,7 +220,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
                     View on Feed
                   </Link>
                   <Link
-                    href="/cleaner/1"
+                    href={`/cleaner/1?bounty=${bounty?.id ?? ''}`}
                     className={buttonVariants({ variant: 'default', size: 'sm', className: 'w-full' })}
                   >
                     Switch to Cleaner <ArrowRight className="size-3 ml-1" />
@@ -221,14 +242,19 @@ export default function BoosterView({ params }: BoosterViewProps) {
                 <Button
                   className="w-full font-semibold"
                   size="lg"
-                  disabled={!isFilled || isLoading}
+                  disabled={!isFilled || isLoading || !canBoost}
                   onClick={handleBoostBounty}
                 >
-                  {isLoading
-                    ? 'Submitting Boost to Monad...'
-                    : isFilled
-                    ? `Boost Bounty (+${boostInput || defaultBoost} MON)`
-                    : 'Fill Amount to Boost'}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin" />
+                      Depositing Boost to BountyVault...
+                    </span>
+                  ) : isFilled ? (
+                    `Boost Bounty (+${boostInput || defaultBoost} MON)`
+                  ) : (
+                    'Fill Amount to Boost'
+                  )}
                 </Button>
               </div>
             )}
