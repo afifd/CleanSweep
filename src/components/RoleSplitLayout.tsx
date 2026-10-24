@@ -8,7 +8,7 @@ import { Sparkles } from 'lucide-react';
 const MapExplorer = dynamic(() => import('@/components/MapExplorer'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full min-h-[350px] flex items-center justify-center bg-muted animate-pulse text-xs text-muted-foreground">
+    <div className="w-full h-full min-h-87.5 flex items-center justify-center bg-muted animate-pulse text-xs text-muted-foreground">
       Loading interactive map...
     </div>
   ),

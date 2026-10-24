@@ -39,7 +39,7 @@ export default function MapExplorer({
   zoom = 17,
 }: MapExplorerProps) {
   return (
-    <div className="w-full h-full min-h-[300px]">
+    <div className="w-full h-full min-h-75">
       <MapContainer
         center={[coords.lat, coords.lng]}
         zoom={zoom}

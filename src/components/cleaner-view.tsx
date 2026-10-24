@@ -148,7 +148,7 @@ export default function CleanerView({ id }: CleanerViewProps) {
                 </p>
                 {txHash && (
                   <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 p-1.5 rounded border">
-                    <span className="truncate max-w-[220px]">Tx: {txHash}</span>
+                    <span className="truncate max-w-55">Tx: {txHash}</span>
                     <a
                       href={`https://testnet.monadexplorer.com/tx/${txHash}`}
                       target="_blank"

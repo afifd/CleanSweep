@@ -33,7 +33,7 @@ export default function RootLayout({
         {children}
 
         {/* Demo Navigation Dock */}
-        <aside className="fixed bottom-3 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur border shadow-lg rounded-full px-4 py-2 flex items-center gap-3 text-xs z-[9999] transition-all hover:bg-background">
+        <aside className="fixed bottom-3 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur border shadow-lg rounded-full px-4 py-2 flex items-center gap-3 text-xs z-9999 transition-all hover:bg-background">
           <span className="font-bold text-muted-foreground">Demo:</span>
           <Link href="/" className="hover:text-primary hover:underline font-medium">Map</Link>
           <span className="text-muted-foreground/50">|</span>

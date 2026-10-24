@@ -12,7 +12,7 @@ import { FUNDERS, DEMO_COORDS } from '@/lib/actors';
 const MapExplorer = dynamic(() => import('@/components/MapExplorer'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-muted animate-pulse text-xs text-muted-foreground">
+    <div className="w-full h-full min-h-100 flex items-center justify-center bg-muted animate-pulse text-xs text-muted-foreground">
       Loading civic bounty map...
     </div>
   ),
@@ -161,7 +161,7 @@ export default function PublicFeedPage() {
                   onClick={() => setSelectedTicket(ticket)}
                   className={`cursor-pointer rounded-lg border transition-all p-3.5 space-y-3 ${
                     isSelected
-                      ? 'border-primary ring-1 ring-primary bg-primary/[0.02] shadow-sm'
+                      ? 'border-primary ring-1 ring-primary bg-primary/2 shadow-sm'
                       : 'hover:border-foreground/30 bg-card'
                   }`}
                 >
@@ -243,7 +243,7 @@ export default function PublicFeedPage() {
         </section>
 
         {/* Right Column: Full-Screen / Interactive Map (7 Cols) */}
-        <section className="lg:col-span-7 h-[450px] lg:h-full relative min-h-[450px]">
+        <section className="lg:col-span-7 h-112.5 lg:h-full relative min-h-112.5">
           <MapExplorer
             coords={selectedTicket.coords}
             status={selectedTicket.status}
