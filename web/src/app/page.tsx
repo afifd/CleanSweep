@@ -193,7 +193,7 @@ export default function HomePage() {
         throw new Error(json.error || "Verification failed");
       }
 
-      setClaimStatus("ECDSA Backend Signature Granted! Calling BountyVault.claimBounty on Monad...");
+      setClaimStatus("ECDSA Backend Signature Granted! Verifying payout...");
 
       // Simulate onchain claim execution
       setTimeout(() => {
@@ -203,7 +203,7 @@ export default function HomePage() {
         setIsClaiming(false);
         setClaimStatus(null);
         alert(
-          `Cleanup validated! Net payout: ${(parseFloat(selectedPin.bountyAmountMON) * 0.975).toFixed(3)} MON disbursed to cleaner. Civic Hero SBT #09 minted!`
+          `Cleanup validated! Net payout: ${(parseFloat(selectedPin.bountyAmountMON) * 0.975).toFixed(3)} MON approved for cleaner.\n\nCatatan Onchain: Ini adalah mode mock/frontend testnet demo. Transaksi real onchain memerlukan kontrak terdeploy via Alchemy session wallet.`
         );
       }, 1000);
     } catch (err: unknown) {

@@ -62,8 +62,31 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithPara = async (method: "passkey" | "email" | "google") => {
-    // Para embedded MPC simulation or SDK connect
     let mockAddr: `0x${string}`;
+
+    // If browser has window.ethereum (MetaMask/Rabby), try connecting user real wallet
+    if (typeof window !== "undefined" && (window as any).ethereum) {
+      try {
+        const accounts = await (window as any).ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        if (accounts && accounts.length > 0) {
+          mockAddr = accounts[0];
+          const newUser: ParaUser = {
+            address: mockAddr,
+            email: undefined,
+            authMethod: "external",
+          };
+          setUser(newUser);
+          localStorage.setItem("cleansweep_user", JSON.stringify(newUser));
+          setIsModalOpen(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("User rejected Web3 connect, fallback to embedded MPC wallet", err);
+      }
+    }
+
     if (method === "passkey") {
       mockAddr = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
     } else if (method === "email") {

@@ -68,10 +68,10 @@ export default function ParaAuthModal() {
             >
               <span className="flex items-center gap-3">
                 <KeyRound className="w-5 h-5 text-[#836EF9]" />
-                Passkey (FaceID / Biometrics)
+                Connect MetaMask / Web3 Wallet
               </span>
               {loadingMethod === "passkey" ? (
-                <span className="text-xs text-gray-400 animate-pulse">Signing...</span>
+                <span className="text-xs text-gray-400 animate-pulse">Connecting...</span>
               ) : (
                 <Check className="w-4 h-4 text-transparent" />
               )}
