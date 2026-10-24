@@ -1,0 +1,22 @@
+name: cleansweep-indexer
+version: 0.1.0
+field_selection:
+  transaction_fields:
+    - hash
+    - from
+    - to
+    - value
+networks:
+  - id: 10143
+    start_block: 0
+    contracts:
+      - name: BountyVault
+        address:
+          - "0x9A65D8F0B8674d827f2B71a2be10c14948a47Be9"
+        handler: src/EventHandlers.ts
+        events:
+          - event: BountyCreated(uint256 indexed bountyId, bytes32 indexed reportId, address indexed creator, address token, uint256 initialAmount, uint64 deadline)
+          - event: BountyBoosted(uint256 indexed bountyId, address indexed donor, address token, uint256 additionalAmount, uint256 newTotalPool)
+          - event: BountyClaimed(uint256 indexed bountyId, bytes32 indexed reportId, address indexed cleaner, uint256 netPayout, uint256 feePaid, bool sbtMinted)
+          - event: BountyRefunded(uint256 indexed bountyId, uint256 donorCount, uint256 totalRefunded)
+          - event: HeroSBTClaimed(address indexed cleaner, uint256 indexed tokenId)

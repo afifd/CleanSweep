@@ -1,0 +1,17 @@
+{
+  "name": "CleanSweep",
+  "short_name": "CleanSweep",
+  "description": "Civic DePIN micro-bounty portal on Monad testnet for visual blight and illegal banner cleanup",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#836EF9",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

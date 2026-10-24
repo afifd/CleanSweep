@@ -1,0 +1,30 @@
+type Bounty @entity {
+  id: ID!
+  bountyId: BigInt!
+  reportId: String!
+  creator: String!
+  token: String!
+  totalPool: BigInt!
+  deadline: BigInt!
+  status: String!
+  cleaner: String
+  donorCount: BigInt!
+  createdAtBlock: BigInt!
+  transactionHash: String!
+}
+
+type CleanerProfile @entity {
+  id: ID! # cleaner address
+  totalClaimedCount: BigInt!
+  totalEarnedMON: BigInt!
+  hasHeroSBT: Boolean!
+  sbtTokenId: BigInt
+}
+
+type BountyDonation @entity {
+  id: ID! # bountyId-donorAddress
+  bounty: Bounty!
+  donor: String!
+  amount: BigInt!
+  timestamp: BigInt!
+}
