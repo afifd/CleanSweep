@@ -7,5 +7,4 @@ contracts/cache/
 .env*.local
 .env
 dist/
-contracts/cache
-web\node_modules
+web/node_modules
