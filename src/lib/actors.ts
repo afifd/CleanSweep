@@ -1,7 +1,16 @@
+function formatPrivateKey(pk?: string, fallback: `0x${string}` = '0x0000000000000000000000000000000000000000000000000000000000000001'): `0x${string}` {
+  if (!pk) return fallback;
+  const trimmed = pk.trim();
+  return (trimmed.startsWith('0x') ? trimmed : `0x${trimmed}`) as `0x${string}`;
+}
+
+export const ZERO_ADDRESS: `0x${string}` = '0x0000000000000000000000000000000000000000';
+
 export interface ActorProfile {
   name: string;
   role: 'funder' | 'booster' | 'cleaner';
   privateKey: `0x${string}`;
+  address?: `0x${string}`;
   defaultAmount?: string;
   locationLabel?: string;
   image?: string;
@@ -13,7 +22,10 @@ export const FUNDERS: Record<string, ActorProfile> = {
   '1': {
     name: 'Pak Budi (Pemilik Ruko)',
     role: 'funder',
-    privateKey: (process.env.NEXT_PUBLIC_FUNDER_1_PK || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`,
+    privateKey: formatPrivateKey(
+      process.env.FUNDER_1_PK || process.env.NEXT_PUBLIC_FUNDER_1_PK
+    ),
+    address: (process.env.NEXT_PUBLIC_FUNDER_1_ADDRESS as `0x${string}`) || ZERO_ADDRESS,
     defaultAmount: '5.0',
     locationLabel: 'Jl. Malioboro No. 42',
     image: '/images/banner-before.jpg',
@@ -22,7 +34,10 @@ export const FUNDERS: Record<string, ActorProfile> = {
   '2': {
     name: 'Bu Sri (Warga)',
     role: 'funder',
-    privateKey: (process.env.NEXT_PUBLIC_FUNDER_2_PK || '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d') as `0x${string}`,
+    privateKey: formatPrivateKey(
+      process.env.FUNDER_2_PK || process.env.NEXT_PUBLIC_FUNDER_2_PK
+    ),
+    address: (process.env.NEXT_PUBLIC_FUNDER_2_ADDRESS as `0x${string}`) || ZERO_ADDRESS,
     defaultAmount: '3.0',
     locationLabel: 'Simpang Tugu Yogyakarta',
     image: '/images/trash1.webp',
@@ -34,7 +49,10 @@ export const BOOSTERS: Record<string, ActorProfile> = {
   '1': {
     name: 'Komunitas Warga Peduli',
     role: 'booster',
-    privateKey: (process.env.NEXT_PUBLIC_BOOSTER_1_PK || '0x5de4111afa1a4b94908f83103eb294b140c2e3639e53ce4bde8c5a891f61f0a4') as `0x${string}`,
+    privateKey: formatPrivateKey(
+      process.env.BOOSTER_1_PK || process.env.NEXT_PUBLIC_BOOSTER_1_PK
+    ),
+    address: (process.env.NEXT_PUBLIC_BOOSTER_1_ADDRESS as `0x${string}`) || ZERO_ADDRESS,
     defaultAmount: '2.0',
   },
 };
@@ -43,7 +61,10 @@ export const CLEANERS: Record<string, ActorProfile> = {
   '1': {
     name: 'Agus (Petugas Kebersihan)',
     role: 'cleaner',
-    privateKey: (process.env.NEXT_PUBLIC_CLEANER_1_PK || '0x47e179ec340f64e0302586469c16da4e0a4f35ff0073575643cf4a60086beadc') as `0x${string}`,
+    privateKey: formatPrivateKey(
+      process.env.CLEANER_1_PK || process.env.NEXT_PUBLIC_CLEANER_1_PK
+    ),
+    address: (process.env.NEXT_PUBLIC_CLEANER_1_ADDRESS as `0x${string}`) || ZERO_ADDRESS,
   },
 };
 

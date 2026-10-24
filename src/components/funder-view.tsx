@@ -3,23 +3,14 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import RoleSplitLayout from '@/components/RoleSplitLayout';
-import { FUNDERS, DEMO_COORDS, DEMO_REPORT_ID } from '@/lib/actors';
+import { FUNDERS } from '@/lib/actors';
 import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/lib/web3';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  ExternalLink,
-  CheckCircle2,
-  Wallet,
-  ArrowRight,
-  ShieldCheck,
-  Wand2,
-  Image as ImageIcon,
-  MapPin,
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ExternalLink, CheckCircle2, ShieldAlert, Wallet, ArrowRight, Wand2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 
 interface FunderViewProps {
@@ -30,12 +21,10 @@ export default function FunderView({ params }: FunderViewProps) {
   const { id } = React.use(params);
   const funder = FUNDERS[id] || FUNDERS['1'];
 
-  const defaultTitle = id === '2' ? 'Tumpukan Sampah Liar' : 'Spanduk Liar Lippo Mall';
+  const defaultTitle = 'Spanduk Liar & Sampah';
   const defaultLocation = funder.locationLabel || 'Jl. Malioboro No. 42';
   const defaultBounty = funder.defaultAmount || '5.0';
-  const imageSrc = funder.image || '/images/banner-before.jpg';
-  const coords = funder.coords || DEMO_COORDS;
-  const account = getAccountFromPrivateKey(funder.privateKey);
+  const coords = funder.coords || { lat: -7.7956, lng: 110.3695 };
 
   // Form states - initially blank to allow "Fill" action
   const [isFilled, setIsFilled] = useState(false);
@@ -71,6 +60,12 @@ export default function FunderView({ params }: FunderViewProps) {
     }
   };
 
+  const account = getAccountFromPrivateKey(funder.privateKey);
+  const displayAddress =
+    funder.address && funder.address !== '0x0000000000000000000000000000000000000000'
+      ? funder.address
+      : account.address;
+
   return (
     <RoleSplitLayout
       coords={coords}
@@ -93,7 +88,7 @@ export default function FunderView({ params }: FunderViewProps) {
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <Wallet className="size-3.5 text-primary" />
-            <span>{formatAddress(account.address)}</span>
+            <span>{formatAddress(displayAddress)}</span>
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">Burner Key</span>
           </div>
         </div>
@@ -118,118 +113,97 @@ export default function FunderView({ params }: FunderViewProps) {
           <CardContent className="space-y-3 text-sm">
             {/* Input 1: Violation Title */}
             <div className="space-y-1">
-              <Label htmlFor="report-title" className="text-xs font-semibold">
+              <Label htmlFor="funder-title" className="text-xs font-semibold">
                 Violation Title
               </Label>
               <Input
-                id="report-title"
+                id="funder-title"
+                placeholder="e.g. Spanduk Liar / Tumpukan Sampah..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Spanduk Liar Lippo Mall"
-                className="h-9 text-xs"
                 disabled={isLocked}
+                className="text-xs h-9 bg-background"
               />
             </div>
 
-            {/* Input 2: Location */}
+            {/* Input 2: Violation Location */}
             <div className="space-y-1">
-              <Label htmlFor="report-location" className="text-xs font-semibold">
-                Location / Address
+              <Label htmlFor="funder-location" className="text-xs font-semibold">
+                Location Label
               </Label>
-              <div className="relative">
-                <Input
-                  id="report-location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Jl. Malioboro No. 42"
-                  className="h-9 text-xs pl-7"
-                  disabled={isLocked}
-                />
-                <MapPin className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <Input
+                id="funder-location"
+                placeholder="e.g. Jl. Malioboro No. 42..."
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                disabled={isLocked}
+                className="text-xs h-9 bg-background"
+              />
             </div>
 
-            {/* Input 3: Bounty Amount */}
+            {/* Input 3: Micro-bounty Amount */}
             <div className="space-y-1">
-              <Label htmlFor="report-bounty" className="text-xs font-semibold">
-                Bounty Escrow Amount
+              <Label htmlFor="funder-bounty" className="text-xs font-semibold">
+                Bounty Amount (MON)
               </Label>
               <div className="relative">
                 <Input
-                  id="report-bounty"
+                  id="funder-bounty"
+                  type="number"
+                  step="0.5"
+                  placeholder="e.g. 5.0"
                   value={bounty}
                   onChange={(e) => setBounty(e.target.value)}
-                  placeholder="e.g. 5.0"
-                  className="h-9 text-xs pr-14 font-mono font-semibold"
                   disabled={isLocked}
+                  className="text-xs h-9 pr-14 font-mono bg-background"
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-primary font-mono pointer-events-none">
+                <span className="absolute right-3 top-2.5 text-xs text-muted-foreground font-semibold">
                   MON
                 </span>
               </div>
             </div>
 
-            {/* Input 4: Image Evidence Display / Placeholder */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Evidence Photo</Label>
+            {/* Violation Image: Empty placeholder vs Filled */}
+            <div className="space-y-1 pt-1">
+              <Label className="text-xs font-semibold">Photo Evidence</Label>
               {isFilled ? (
                 <div className="relative w-full h-36 border rounded-md overflow-hidden bg-muted">
                   <Image
-                    src={imageSrc}
-                    alt="Evidence Before"
+                    src={funder.image || '/images/banner-before.jpg'}
+                    alt="Violation Evidence"
                     fill
                     sizes="(max-width: 768px) 100vw, 448px"
                     className="object-cover"
                     priority
                   />
-                  <div className="absolute top-2 left-2 bg-black/70 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded font-medium">
-                    Initial Photo Attached
+                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
+                    <CheckCircle2 className="size-3 text-emerald-400" />
+                    EXIF Verified • GPS Attached
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-md bg-muted/20 text-muted-foreground p-3 text-center">
                   <ImageIcon className="size-6 mb-1 text-muted-foreground/60" />
-                  <span className="text-xs font-medium">No evidence photo attached</span>
+                  <span className="text-xs font-medium">No photo uploaded yet</span>
                   <span className="text-[10px] text-muted-foreground/60">
-                    Click &quot;Fill&quot; below to autofill form and attach photo
+                    Click &quot;Fill&quot; below to autofill evidence and activate map pin
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Geotag & Ticket Meta info (shows when filled) */}
-            {isFilled && (
-              <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-2.5 rounded-md border">
-                <div>
-                  <p className="font-semibold text-foreground">Target Coordinates</p>
-                  <p className="font-mono text-muted-foreground">
-                    {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Ticket ID</p>
-                  <p className="font-mono text-muted-foreground">
-                    {DEMO_REPORT_ID.slice(0, 10)}...
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Success state info */}
+            {/* Escrow Lock confirmation badge */}
             {isLocked && (
               <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />
-                  <span>Escrow Bounty Locked on Monad!</span>
+                  <span>Escrow Locked on Monad Testnet ({bounty || defaultBounty} MON)</span>
                 </div>
-                <p className="text-muted-foreground">
-                  Transaction confirmed in sub-second block time. The bounty is now live on the public map.
-                </p>
                 {txHash && (
                   <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 p-1.5 rounded border">
                     <span className="truncate max-w-55">Tx: {txHash}</span>
                     <a
-                      href={`https://testnet.monadexplorer.com/tx/${txHash}`}
+                      href={`https://testnet.monadscan.com/tx/${txHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary flex items-center gap-0.5 hover:underline"
@@ -246,36 +220,35 @@ export default function FunderView({ params }: FunderViewProps) {
             {isLocked ? (
               <div className="w-full space-y-2">
                 <Button className="w-full" disabled variant="outline">
-                  <ShieldCheck className="size-4 mr-1 text-emerald-600" />
-                  Bounty Active ({bounty || defaultBounty} MON)
+                  <CheckCircle2 className="size-4 mr-1 text-emerald-600" />
+                  Bounty Active in Public Feed
                 </Button>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <Link
-                    href="/booster/1"
-                    className={buttonVariants({ variant: 'secondary', size: 'sm', className: 'w-full' })}
+                    href="/"
+                    className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full' })}
                   >
-                    View as Booster <ArrowRight className="size-3 ml-1" />
+                    View on Feed
                   </Link>
                   <Link
-                    href="/cleaner/1"
+                    href="/booster/1"
                     className={buttonVariants({ variant: 'default', size: 'sm', className: 'w-full' })}
                   >
-                    View as Cleaner <ArrowRight className="size-3 ml-1" />
+                    Switch to Booster <ArrowRight className="size-3 ml-1" />
                   </Link>
                 </div>
               </div>
             ) : (
               <div className="w-full space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleAutoFill}
-                    className="w-full font-bold bg-green-600 hover:bg-green-700 active:scale-98 text-white shadow-sm transition-all"
-                  >
-                    <Wand2 className="size-3.5 mr-1.5 fill-white text-white" /> Fill
-                  </Button>
-                </div>
+                {/* High-visibility Fill button */}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAutoFill}
+                  className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white shadow-sm transition-all"
+                >
+                  <Wand2 className="size-3.5 mr-1.5 fill-white text-white" /> Fill
+                </Button>
 
                 <Button
                   className="w-full font-semibold"
@@ -284,10 +257,10 @@ export default function FunderView({ params }: FunderViewProps) {
                   onClick={handleLockBounty}
                 >
                   {isLoading
-                    ? 'Locking on Monad Testnet...'
+                    ? 'Submitting to Monad...'
                     : isFilled
                     ? `Lock ${bounty || defaultBounty} MON Bounty`
-                    : 'Fill to Lock Bounty'}
+                    : 'Fill Details to Lock Bounty'}
                 </Button>
               </div>
             )}
