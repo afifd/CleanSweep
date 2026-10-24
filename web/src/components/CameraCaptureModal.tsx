@@ -115,7 +115,7 @@ export default function CameraCaptureModal({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-[#111827] border border-white/10 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">

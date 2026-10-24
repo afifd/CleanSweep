@@ -144,10 +144,10 @@ export default function BlightMap({
   }, [selectedPin]);
 
   return (
-    <div className="relative w-full h-[360px] md:h-[460px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="relative z-0 w-full h-[360px] md:h-[460px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl isolate">
+      <div ref={mapContainerRef} className="w-full h-full z-0" />
       {/* Legend Badge */}
-      <div className="absolute top-3 left-3 z-[1000] bg-[#111827]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-xs flex items-center space-x-3">
+      <div className="absolute top-3 left-3 z-10 bg-[#111827]/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-xs flex items-center space-x-3">
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
           Active
