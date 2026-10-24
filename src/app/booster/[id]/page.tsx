@@ -5,15 +5,20 @@ export function generateStaticParams() {
   return [{ id: '1' }];
 }
 
-export default async function BoosterPage({
+export default function BoosterPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading Booster View...</div>}>
-      <BoosterView id={id} />
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+          Loading Booster View...
+        </div>
+      }
+    >
+      <BoosterView params={params} />
     </Suspense>
   );
 }

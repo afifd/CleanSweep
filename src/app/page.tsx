@@ -171,6 +171,7 @@ export default function PublicFeedPage() {
                         src={ticket.image}
                         alt={ticket.title}
                         fill
+                        sizes="80px"
                         className="object-cover"
                       />
                     </div>

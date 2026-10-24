@@ -1,6 +1,7 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import Link from 'next/link';
@@ -30,6 +31,14 @@ interface MapExplorerProps {
   zoom?: number;
 }
 
+function RecenterMap({ coords, zoom }: { coords: { lat: number; lng: number }; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([coords.lat, coords.lng], zoom);
+  }, [coords.lat, coords.lng, zoom, map]);
+  return null;
+}
+
 export default function MapExplorer({
   coords,
   status = 'ACTIVE',
@@ -38,14 +47,20 @@ export default function MapExplorer({
   markers,
   zoom = 17,
 }: MapExplorerProps) {
+  const mapKey = markers
+    ? 'feed-map'
+    : `single-map-${coords.lat.toFixed(4)}-${coords.lng.toFixed(4)}`;
+
   return (
     <div className="w-full h-full min-h-75">
       <MapContainer
+        key={mapKey}
         center={[coords.lat, coords.lng]}
         zoom={zoom}
         className="w-full h-full min-h-full"
         scrollWheelZoom={true}
       >
+        <RecenterMap coords={coords} zoom={zoom} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -54,7 +69,7 @@ export default function MapExplorer({
         {/* If custom markers array is provided (e.g. for main overview feed) */}
         {markers && markers.length > 0 ? (
           markers.map((item, idx) => (
-            <div key={item.id || idx}>
+            <React.Fragment key={item.id || idx}>
               <Marker position={[item.coords.lat, item.coords.lng]} icon={defaultIcon}>
                 <Popup>
                   <div className="text-xs space-y-1 p-1">
@@ -82,12 +97,12 @@ export default function MapExplorer({
                   }}
                 />
               )}
-            </div>
+            </React.Fragment>
           ))
         ) : (
           /* Single marker view for role pages */
           status !== 'NONE' && (
-            <>
+            <React.Fragment>
               <Marker position={[coords.lat, coords.lng]} icon={defaultIcon}>
                 <Popup>
                   <div className="text-xs space-y-1">
@@ -106,7 +121,7 @@ export default function MapExplorer({
                   fillOpacity: 0.15,
                 }}
               />
-            </>
+            </React.Fragment>
           )
         )}
       </MapContainer>

@@ -12,10 +12,11 @@ import { ExternalLink, CheckCircle2, MapPin, Wallet, TrendingUp, Users, ArrowRig
 import Link from 'next/link';
 
 interface BoosterViewProps {
-  id: string;
+  params: Promise<{ id: string }>;
 }
 
-export default function BoosterView({ id }: BoosterViewProps) {
+export default function BoosterView({ params }: BoosterViewProps) {
+  const { id } = React.use(params);
   const booster = BOOSTERS[id] || BOOSTERS['1'];
 
   const initialEscrow = 5.0;
@@ -94,6 +95,7 @@ export default function BoosterView({ id }: BoosterViewProps) {
                   src="/images/banner-before.jpg"
                   alt="Spanduk Liar Target"
                   fill
+                  sizes="(max-width: 768px) 50vw, 220px"
                   className="object-cover"
                   priority
                 />

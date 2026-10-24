@@ -12,10 +12,11 @@ import { ExternalLink, CheckCircle2, ShieldCheck, Wallet, ArrowRight, Sparkles, 
 import Link from 'next/link';
 
 interface CleanerViewProps {
-  id: string;
+  params: Promise<{ id: string }>;
 }
 
-export default function CleanerView({ id }: CleanerViewProps) {
+export default function CleanerView({ params }: CleanerViewProps) {
+  const { id } = React.use(params);
   const cleaner = CLEANERS[id] || CLEANERS['1'];
 
   const [status, setStatus] = useState<'ACTIVE' | 'RESOLVED'>('ACTIVE');
@@ -95,6 +96,7 @@ export default function CleanerView({ id }: CleanerViewProps) {
                 src="/images/banner-after.jpg"
                 alt="Cleanup Proof After"
                 fill
+                sizes="(max-width: 768px) 100vw, 448px"
                 className="object-cover"
                 priority
               />

@@ -12,10 +12,11 @@ import { ExternalLink, CheckCircle2, MapPin, Wallet, ArrowRight, ShieldCheck } f
 import Link from 'next/link';
 
 interface FunderViewProps {
-  id: string;
+  params: Promise<{ id: string }>;
 }
 
-export default function FunderView({ id }: FunderViewProps) {
+export default function FunderView({ params }: FunderViewProps) {
+  const { id } = React.use(params);
   const funder = FUNDERS[id] || FUNDERS['1'];
 
   const [status, setStatus] = useState<'NONE' | 'ACTIVE' | 'RESOLVED'>('NONE');
@@ -90,6 +91,7 @@ export default function FunderView({ id }: FunderViewProps) {
                 src={imageSrc}
                 alt="Evidence Before"
                 fill
+                sizes="(max-width: 768px) 100vw, 448px"
                 className="object-cover"
                 priority
               />
