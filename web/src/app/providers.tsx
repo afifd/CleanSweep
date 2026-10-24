@@ -64,10 +64,40 @@ export function Providers({ children }: { children: ReactNode }) {
   const loginWithPara = async (method: "passkey" | "email" | "google") => {
     let mockAddr: `0x${string}`;
 
-    // If browser has window.ethereum (MetaMask/Rabby), try connecting user real wallet
+    // If browser has window.ethereum (MetaMask/Rabby), auto-switch/add Monad Testnet and connect
     if (typeof window !== "undefined" && (window as any).ethereum) {
       try {
-        const accounts = await (window as any).ethereum.request({
+        const ethereum = (window as any).ethereum;
+
+        // Auto request switch to Monad Testnet (Chain ID 10143 / 0x279f)
+        try {
+          await ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x279f" }],
+          });
+        } catch (switchError: any) {
+          // Error 4902 means the chain has not been added to MetaMask yet
+          if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
+            await ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x279f",
+                  chainName: "Monad Testnet",
+                  nativeCurrency: {
+                    name: "Monad",
+                    symbol: "MON",
+                    decimals: 18,
+                  },
+                  rpcUrls: ["https://testnet-rpc.monad.xyz"],
+                  blockExplorerUrls: ["https://testnet.monadscan.com"],
+                },
+              ],
+            });
+          }
+        }
+
+        const accounts = await ethereum.request({
           method: "eth_requestAccounts",
         });
         if (accounts && accounts.length > 0) {

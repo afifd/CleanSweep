@@ -100,17 +100,42 @@ export default function HomePage() {
   const [boostAmount, setBoostAmount] = useState("0.5");
   const [isBoosting, setIsBoosting] = useState(false);
 
-  const handleCreateBountySubmit = (e: React.FormEvent) => {
+  const handleCreateBountySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!capturedBefore) {
       alert("Please capture live photo proof using camera first.");
       return;
     }
 
-    const newId = pins.length + 1;
     const fakeReportId =
       "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 
+    // If real Web3 wallet is connected, send real transaction to lock micro-bounty
+    if (typeof window !== "undefined" && (window as any).ethereum && user?.address) {
+      try {
+        const ethereum = (window as any).ethereum;
+        const valInWei = "0x" + (BigInt(Math.floor(parseFloat(newAmount) * 1e18))).toString(16);
+
+        // Send native MON transaction directly to BountyVault escrow
+        const txHash = await ethereum.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: user.address,
+              to: CONTRACT_ADDRESSES.BOUNTY_VAULT,
+              value: valInWei,
+              gas: "0x186A0", // 100,000 gas limit for Monad
+            },
+          ],
+        });
+
+        alert(`Onchain Tx broadcast to Monad Testnet!\nTx Hash: ${txHash}\nView on: https://testnet.monadscan.com/tx/${txHash}`);
+      } catch (err: any) {
+        console.warn("User canceled or tx failed:", err);
+      }
+    }
+
+    const newId = pins.length + 1;
     const newPin: BlightPin = {
       id: newId,
       reportId: fakeReportId,
@@ -130,33 +155,53 @@ export default function HomePage() {
     setCapturedBefore(null);
     setNewTitle("");
     setNewDesc("");
-    alert(`Micro-bounty created on Monad testnet! Escrow locked: ${newAmount} MON`);
   };
 
-  const handleBoost = () => {
+  const handleBoost = async () => {
     if (!selectedPin) return;
     setIsBoosting(true);
-    setTimeout(() => {
-      const updated = pins.map((p) => {
-        if (p.id === selectedPin.id) {
-          const nextPool = (parseFloat(p.bountyAmountMON) + parseFloat(boostAmount)).toFixed(2);
-          return {
-            ...p,
-            bountyAmountMON: nextPool,
-            donorCount: p.donorCount + 1,
-          };
-        }
-        return p;
-      });
-      setPins(updated);
-      setSelectedPin({
-        ...selectedPin,
-        bountyAmountMON: (parseFloat(selectedPin.bountyAmountMON) + parseFloat(boostAmount)).toFixed(2),
-        donorCount: selectedPin.donorCount + 1,
-      });
-      setIsBoosting(false);
-      alert(`Pool boosted by +${boostAmount} MON! Monad 400ms block inclusion confirmed.`);
-    }, 600);
+
+    if (typeof window !== "undefined" && (window as any).ethereum && user?.address) {
+      try {
+        const ethereum = (window as any).ethereum;
+        const valInWei = "0x" + (BigInt(Math.floor(parseFloat(boostAmount) * 1e18))).toString(16);
+
+        const txHash = await ethereum.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: user.address,
+              to: CONTRACT_ADDRESSES.BOUNTY_VAULT,
+              value: valInWei,
+              gas: "0x186A0",
+            },
+          ],
+        });
+
+        alert(`Boost Tx broadcast to Monad Testnet!\nTx Hash: ${txHash}`);
+      } catch (err: any) {
+        console.warn("Boost canceled or failed:", err);
+      }
+    }
+
+    const updated = pins.map((p) => {
+      if (p.id === selectedPin.id) {
+        const nextPool = (parseFloat(p.bountyAmountMON) + parseFloat(boostAmount)).toFixed(2);
+        return {
+          ...p,
+          bountyAmountMON: nextPool,
+          donorCount: p.donorCount + 1,
+        };
+      }
+      return p;
+    });
+    setPins(updated);
+    setSelectedPin({
+      ...selectedPin,
+      bountyAmountMON: (parseFloat(selectedPin.bountyAmountMON) + parseFloat(boostAmount)).toFixed(2),
+      donorCount: selectedPin.donorCount + 1,
+    });
+    setIsBoosting(false);
   };
 
   const handleAfterPhotoCaptured = async (afterData: {
