@@ -8,7 +8,18 @@ import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/l
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, CheckCircle2, ShieldCheck, Wallet, ArrowRight, Sparkles, Navigation } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import {
+  ExternalLink,
+  CheckCircle2,
+  ShieldCheck,
+  Wallet,
+  ArrowRight,
+  Sparkles,
+  Navigation,
+  Wand2,
+  Image as ImageIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface CleanerViewProps {
@@ -19,6 +30,8 @@ export default function CleanerView({ params }: CleanerViewProps) {
   const { id } = React.use(params);
   const cleaner = CLEANERS[id] || CLEANERS['1'];
 
+  // Form states - initially unfilled, populated on "Fill"
+  const [isFilled, setIsFilled] = useState(false);
   const [status, setStatus] = useState<'ACTIVE' | 'RESOLVED'>('ACTIVE');
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string>('');
@@ -28,7 +41,12 @@ export default function CleanerView({ params }: CleanerViewProps) {
   const cleanerPayout = (totalBounty * 0.98).toFixed(2);
   const platformFee = (totalBounty * 0.02).toFixed(2);
 
+  const handleAutoFill = () => {
+    setIsFilled(true);
+  };
+
   const handleClaimBounty = async () => {
+    if (!isFilled) return;
     setIsLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 850));
@@ -51,7 +69,7 @@ export default function CleanerView({ params }: CleanerViewProps) {
       title="Spanduk Liar - Cleaned & Claimed"
     >
       <div className="space-y-4">
-        {/* Persona Header */}
+        {/* Persona Header (Not changeable) */}
         <div className="rounded-lg border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div>
@@ -78,10 +96,14 @@ export default function CleanerView({ params }: CleanerViewProps) {
                 <p className="text-xs font-mono text-muted-foreground">Ticket #Malioboro-01 ({DEMO_REPORT_ID.slice(0, 10)}...)</p>
               </div>
               <Badge
-                variant={status === 'RESOLVED' ? 'default' : 'secondary'}
+                variant={status === 'RESOLVED' ? 'default' : isFilled ? 'secondary' : 'outline'}
                 className={status === 'RESOLVED' ? 'bg-emerald-600 text-white' : ''}
               >
-                {status === 'RESOLVED' ? 'RESOLVED & SETTLED' : 'VERIFIED PROOF'}
+                {status === 'RESOLVED'
+                  ? 'RESOLVED & SETTLED'
+                  : isFilled
+                  ? 'VERIFIED PROOF'
+                  : 'AWAITING PROOF'}
               </Badge>
             </div>
             <CardDescription className="text-xs">
@@ -90,20 +112,33 @@ export default function CleanerView({ params }: CleanerViewProps) {
           </CardHeader>
 
           <CardContent className="space-y-4 text-sm">
-            {/* Proof Image */}
-            <div className="relative w-full h-44 border rounded-md overflow-hidden bg-muted">
-              <Image
-                src="/images/banner-after.jpg"
-                alt="Cleanup Proof After"
-                fill
-                sizes="(max-width: 768px) 100vw, 448px"
-                className="object-cover"
-                priority
-              />
-              <div className="absolute top-2 left-2 bg-emerald-700/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
-                <CheckCircle2 className="size-3" />
-                Cleanup Proof (After)
-              </div>
+            {/* Proof Image: Placeholder vs Filled */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Cleanup Proof Photo</Label>
+              {isFilled ? (
+                <div className="relative w-full h-44 border rounded-md overflow-hidden bg-muted">
+                  <Image
+                    src="/images/banner-after.jpg"
+                    alt="Cleanup Proof After"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 448px"
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute top-2 left-2 bg-emerald-700/80 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded font-medium flex items-center gap-1">
+                    <CheckCircle2 className="size-3" />
+                    Cleanup Proof (After) Attached
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-md bg-muted/20 text-muted-foreground p-3 text-center">
+                  <ImageIcon className="size-6 mb-1 text-muted-foreground/60" />
+                  <span className="text-xs font-medium">No cleanup proof attached</span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    Click &quot;Fill&quot; below to attach after-photo and GPS proof
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Verification Badges & Metrics */}
@@ -113,15 +148,23 @@ export default function CleanerView({ params }: CleanerViewProps) {
                   <Navigation className="size-3.5 text-emerald-600" />
                   <span className="font-medium">Proximity Verification:</span>
                 </div>
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-mono text-[11px]">
-                  GPS Diff: 0m (Passed)
-                </Badge>
+                {isFilled ? (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300 font-mono text-[11px]">
+                    GPS Diff: 0m (Passed)
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[11px] text-muted-foreground font-mono">
+                    Awaiting GPS Check
+                  </Badge>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-3 rounded-md border">
                 <div>
                   <p className="font-semibold text-foreground">Backend ECDSA</p>
-                  <p className="text-emerald-600 font-medium">Valid Signature</p>
+                  <p className={isFilled ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+                    {isFilled ? 'Valid Signature' : 'Pending Proof'}
+                  </p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Escrow Pool</p>
@@ -188,14 +231,29 @@ export default function CleanerView({ params }: CleanerViewProps) {
                 </div>
               </div>
             ) : (
-              <Button
-                className="w-full font-semibold"
-                size="lg"
-                disabled={isLoading}
-                onClick={handleClaimBounty}
-              >
-                {isLoading ? 'Releasing Escrow on Monad...' : `Submit Proof & Claim ${cleanerPayout} MON`}
-              </Button>
+              <div className="w-full space-y-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAutoFill}
+                  className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white shadow-sm transition-all"
+                >
+                  <Wand2 className="size-3.5 mr-1.5 fill-white text-white" /> Fill
+                </Button>
+
+                <Button
+                  className="w-full font-semibold"
+                  size="lg"
+                  disabled={!isFilled || isLoading}
+                  onClick={handleClaimBounty}
+                >
+                  {isLoading
+                    ? 'Releasing Escrow on Monad...'
+                    : isFilled
+                    ? `Submit Proof & Claim ${cleanerPayout} MON`
+                    : 'Fill Proof to Claim Bounty'}
+                </Button>
+              </div>
             )}
           </CardFooter>
         </Card>

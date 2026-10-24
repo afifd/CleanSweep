@@ -8,7 +8,18 @@ import { getAccountFromPrivateKey, formatAddress, generateMockTxHash } from '@/l
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, CheckCircle2, MapPin, Wallet, TrendingUp, Users, ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  ExternalLink,
+  CheckCircle2,
+  MapPin,
+  Wallet,
+  TrendingUp,
+  Users,
+  ArrowRight,
+  Wand2,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface BoosterViewProps {
@@ -19,8 +30,12 @@ export default function BoosterView({ params }: BoosterViewProps) {
   const { id } = React.use(params);
   const booster = BOOSTERS[id] || BOOSTERS['1'];
 
+  const defaultBoost = booster.defaultAmount || '2.0';
   const initialEscrow = 5.0;
-  const boostAmount = parseFloat(booster.defaultAmount || '2.0');
+
+  // Form states - input-able boost amount with "Fill" capability
+  const [boostInput, setBoostInput] = useState('');
+  const [isFilled, setIsFilled] = useState(false);
   const [currentEscrow, setCurrentEscrow] = useState<number>(initialEscrow);
   const [hasBoosted, setHasBoosted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,13 +43,21 @@ export default function BoosterView({ params }: BoosterViewProps) {
 
   const account = getAccountFromPrivateKey(booster.privateKey);
 
+  const handleAutoFill = () => {
+    setBoostInput(defaultBoost);
+    setIsFilled(true);
+  };
+
   const handleBoostBounty = async () => {
+    const amountToAdd = parseFloat(boostInput || defaultBoost);
+    if (isNaN(amountToAdd) || amountToAdd <= 0) return;
+
     setIsLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));
       const hash = generateMockTxHash();
       setTxHash(hash);
-      setCurrentEscrow((prev) => prev + boostAmount);
+      setCurrentEscrow((prev) => prev + amountToAdd);
       setHasBoosted(true);
     } catch (err) {
       console.error('Failed to boost bounty:', err);
@@ -52,7 +75,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
       title="Spanduk Liar - #Malioboro-01"
     >
       <div className="space-y-4">
-        {/* Persona Header */}
+        {/* Persona Header (Not changeable) */}
         <div className="rounded-lg border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div>
@@ -78,8 +101,11 @@ export default function BoosterView({ params }: BoosterViewProps) {
                 <CardTitle className="text-base">Inspect & Boost Escrow</CardTitle>
                 <p className="text-xs font-mono text-muted-foreground">Ticket #Malioboro-01</p>
               </div>
-              <Badge variant="default" className="text-[11px] bg-primary">
-                ACTIVE
+              <Badge
+                variant={hasBoosted ? 'default' : 'secondary'}
+                className="text-[11px]"
+              >
+                {hasBoosted ? 'BOOSTED' : 'ACTIVE POOL'}
               </Badge>
             </div>
             <CardDescription className="text-xs">
@@ -112,6 +138,29 @@ export default function BoosterView({ params }: BoosterViewProps) {
               </div>
             </div>
 
+            {/* Input-able Boost Increment Amount */}
+            <div className="space-y-1.5">
+              <Label htmlFor="boost-amount" className="text-xs font-semibold">
+                Boost Increment Amount
+              </Label>
+              <div className="relative">
+                <Input
+                  id="boost-amount"
+                  value={boostInput}
+                  onChange={(e) => {
+                    setBoostInput(e.target.value);
+                    setIsFilled(e.target.value.trim().length > 0);
+                  }}
+                  placeholder="e.g. 2.0"
+                  className="h-9 text-xs pr-14 font-mono font-semibold"
+                  disabled={hasBoosted}
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-500 font-mono pointer-events-none">
+                  MON
+                </span>
+              </div>
+            </div>
+
             {/* Ticket Summary Specs */}
             <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-3 rounded-md border">
               <div className="flex items-start gap-1.5">
@@ -130,8 +179,10 @@ export default function BoosterView({ params }: BoosterViewProps) {
                 <p className="text-muted-foreground">5.0 MON (Pak Budi)</p>
               </div>
               <div>
-                <p className="font-semibold text-foreground">Boost Increment</p>
-                <p className="font-bold text-amber-600">+{boostAmount.toFixed(1)} MON</p>
+                <p className="font-semibold text-foreground">Boost Applied</p>
+                <p className="font-bold text-amber-600">
+                  +{boostInput || (isFilled ? defaultBoost : '0.0')} MON
+                </p>
               </div>
             </div>
 
@@ -140,7 +191,7 @@ export default function BoosterView({ params }: BoosterViewProps) {
               <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />
-                  <span>Bounty Boosted by +{boostAmount.toFixed(1)} MON!</span>
+                  <span>Bounty Boosted by +{boostInput || defaultBoost} MON!</span>
                 </div>
                 <p className="text-muted-foreground">
                   Added to Monad escrow vault. Total bounty is now {currentEscrow.toFixed(1)} MON.
@@ -177,14 +228,29 @@ export default function BoosterView({ params }: BoosterViewProps) {
                 </Link>
               </div>
             ) : (
-              <Button
-                className="w-full font-semibold"
-                size="lg"
-                disabled={isLoading}
-                onClick={handleBoostBounty}
-              >
-                {isLoading ? 'Confirming on Monad...' : `Boost +${boostAmount.toFixed(1)} MON`}
-              </Button>
+              <div className="w-full space-y-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAutoFill}
+                  className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white shadow-sm transition-all"
+                >
+                  <Wand2 className="size-3.5 mr-1.5 fill-white text-white" /> Fill
+                </Button>
+
+                <Button
+                  className="w-full font-semibold"
+                  size="lg"
+                  disabled={!isFilled || isLoading}
+                  onClick={handleBoostBounty}
+                >
+                  {isLoading
+                    ? 'Confirming on Monad...'
+                    : isFilled
+                    ? `Boost +${boostInput || defaultBoost} MON`
+                    : 'Fill Amount to Boost'}
+                </Button>
+              </div>
             )}
           </CardFooter>
         </Card>
